@@ -107,7 +107,7 @@ client: OrvilleClient = OrvilleClient()
 def get_user_data_object(message:discord.Message)->dict:
     server_id: str = str(message.guild.id)
 
-    user_data_path: str = "./Users/{}".format(server_id)
+    user_data_path: str = "../TurnipPriceBot/Users/{}".format(server_id)
     if not os.path.exists(user_data_path):
         os.mkdir(user_data_path)
 
@@ -115,7 +115,7 @@ def get_user_data_object(message:discord.Message)->dict:
 
     author_username: str = str(message.author)
 
-    user_info_path: str = "./Users/{}/{}.json".format(server_id, author_id)
+    user_info_path: str = "../TurnipPriceBot/Users/{}/{}.json".format(server_id, author_id)
     user_info: dict = load_user_info(user_info_path)
 
     return { "author_id": author_id, "server_id": server_id, "author_username": author_username, "user_info_path": user_info_path, "user_info": user_info }
