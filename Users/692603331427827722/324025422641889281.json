@@ -1,0 +1,15 @@
+{
+    "ic_channel_id": 708847495417036910,
+    "ic_channel_name": "test-bot-ic-channel",
+    "island_flags": {
+        "0058": ""
+    },
+    "notify": -1,
+    "open_reason": "huzzah",
+    "prices": {
+        "0058A": "300"
+    },
+    "timezone": "America/New_York",
+    "username": "California",
+    "username_discord": "None"
+}
