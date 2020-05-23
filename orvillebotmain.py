@@ -26,7 +26,7 @@ ZFILL_LEN = 4
 default_timezone:str = "America/New_York"
 current_date_no: int = -1
 
-WATCH_DIRECTORY = "./Users/"
+WATCH_DIRECTORY = os.getenv('WATCH_DIRECTORY')
 NOTIFY_OFF = -1
 
 client = None
@@ -102,7 +102,7 @@ class OrvilleClient(discord.Client):
         if ".json~" not in src_path and "orville" not in src_path:
 
             server_id_str: str = src_path[-42:-24]  # Hacky way to get the server id
-            orville_path: str = "./Users/orville.json"
+            orville_path: str = "../TurnipPriceBot/Users/orville.json"
             orville_info: dict = []
             try:
                 with open(orville_path, 'r') as jsonfile:
@@ -239,7 +239,7 @@ class OrvilleClient(discord.Client):
 def get_open_island_tally(server_id:str)->tuple:
     result:str = "\n ---------------------------------------- \n :airplane_small: :beach: ISLANDS OPEN RIGHT NOW :airplane_small: :beach: "
 
-    json_files: list = glob.glob("./Users/{}/*.json".format(server_id))
+    json_files: list = glob.glob("../TurnipPriceBot/Users/{}/*.json".format(server_id))
 
     # Find users who are open
     count:int = 0
