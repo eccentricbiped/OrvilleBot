@@ -101,7 +101,7 @@ class OrvilleClient(discord.Client):
     async def on_json_update(self, src_path:str):
         if ".json~" not in src_path and "orville" not in src_path:
 
-            server_id_str: str = src_path[-42:-24]  # Hacky way to get the server id
+            #server_id_str: str = src_path[-42:-24]  # Hacky way to get the server id
             orville_path: str = "./Users/orville.json"
             orville_info: dict = []
             try:
@@ -111,26 +111,31 @@ class OrvilleClient(discord.Client):
             except Exception as e:
                 print("on_any_event error occurred loading json " + str(e))
 
-            cached_count: int = 0 if server_id_str not in orville_info else orville_info[server_id_str]["open_count"]
-            open_island_tally: tuple = get_open_island_tally(server_id_str)
+            if "servers" in orville_info:
 
-            if open_island_tally[1] != cached_count:
-                # There's been a change! Broadcast island status change and update count
+                for server in orville_info["servers"]:
 
-                if "broadcast_channel_id" in orville_info[server_id_str]:
-                    channel_id:int = int(orville_info[server_id_str]["broadcast_channel_id"])
-                    await self.send_message_to_broadcast_channel(open_island_tally[0], channel_id)
+                    server_id_str:str = server["server_id"]
+                    cached_count: int = 0 if "open_count" not in server else server["open_count"]
+                    open_island_tally: tuple = get_open_island_tally(server_id_str)
 
-                orville_info[server_id_str]["open_count"] = open_island_tally[1]  # update cached value
+                    if open_island_tally[1] != cached_count:
+                        # There's been a change! Broadcast island status change and update count
 
-                try:
-                    with open(orville_path, 'w+') as wf:
-                        json.dump(orville_info, wf, indent=4, sort_keys=True)
-                        wf.close()
-                except Exception as e:
-                    print("on_any_event error occurred loading json " + str(e))
+                        if "broadcast_channel_id" in server:
+                            channel_id:int = int(server["broadcast_channel_id"])
+                            await self.send_message_to_broadcast_channel(open_island_tally[0], channel_id)
 
-            await asyncio.sleep(1)
+                        server["open_count"] = open_island_tally[1]  # update cached value
+
+                        try:
+                            with open(orville_path, 'w+') as wf:
+                                json.dump(orville_info, wf, indent=4, sort_keys=True)
+                                wf.close()
+                        except Exception as e:
+                            print("on_any_event error occurred loading json " + str(e))
+
+                    await asyncio.sleep(1)
 
 
     async def on_ready(self):
@@ -249,8 +254,15 @@ def get_open_island_tally(server_id:str)->tuple:
         date_no = datetime.now(pytz.timezone(user_info["timezone"])).timetuple().tm_yday - DAYZERO
         key: str = str(date_no).zfill(ZFILL_LEN)
 
-        if "open_reason" in user_info and key in user_info["island_flags"] and "O" in user_info["island_flags"][key]:
+        if "open_reason" in user_info \
+                and "island_flags" in user_info \
+                and key in user_info["island_flags"] \
+                and "O" in user_info["island_flags"][key]:
+
             result += "\n **" + user_info["username"] + "**: " + user_info["open_reason"]
+            if "ic_channel_id" in user_info and user_info["ic_channel_id"] != "":
+                result += " <#" + str(user_info["ic_channel_id"]) + "> "
+
             count += 1
 
     if count == 0:
