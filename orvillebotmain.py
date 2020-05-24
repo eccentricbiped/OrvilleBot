@@ -249,7 +249,7 @@ def get_open_island_tally(server_id:str)->tuple:
         date_no = datetime.now(pytz.timezone(user_info["timezone"])).timetuple().tm_yday - DAYZERO
         key: str = str(date_no).zfill(ZFILL_LEN)
 
-        if "open_reason" in user_info and "O" in user_info["island_flags"][key]:
+        if "open_reason" in user_info and key in user_info["island_flags"] and "O" in user_info["island_flags"][key]:
             result += "\n **" + user_info["username"] + "**: " + user_info["open_reason"]
             count += 1
 
@@ -285,6 +285,11 @@ def load_user_info(file_path:str)->dict:
             jsonfile.close()
     except Exception as e:
         print("load_user_info error occurred loading json " + str(e))
+
+    if "island_flags" not in user_info:
+        user_info["island_flags"] = {}
+    if "open_reason" not in user_info:
+        user_info["open_reason"] = ""
 
     return user_info
 
