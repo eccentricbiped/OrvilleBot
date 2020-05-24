@@ -259,9 +259,11 @@ def get_open_island_tally(server_id:str)->tuple:
                 and key in user_info["island_flags"] \
                 and "O" in user_info["island_flags"][key]:
 
-            result += "\n **" + user_info["username"] + "**: " + user_info["open_reason"]
+            result += "\n **" + user_info["username"] + "**: "
             if "ic_channel_id" in user_info and user_info["ic_channel_id"] != "":
                 result += " <#" + str(user_info["ic_channel_id"]) + "> "
+            else:
+                result += user_info["open_reason"]
 
             count += 1
 
