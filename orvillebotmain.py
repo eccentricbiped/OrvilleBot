@@ -30,7 +30,8 @@ ZFILL_LEN = 4
 default_timezone:str = "America/New_York"
 current_date_no: int = -1
 
-WATCH_DIRECTORY = "./Users/"
+# WATCH_DIRECTORY = "./Users/"
+WATCH_DIRECTORY = os.getenv('WATCH_DIRECTORY')
 NOTIFY_OFF = -1
 
 client = None
@@ -106,7 +107,7 @@ class OrvilleClient(discord.Client):
         if ".json~" not in src_path and "orville" not in src_path:
 
             #server_id_str: str = src_path[-42:-24]  # Hacky way to get the server id
-            orville_path: str = "./Users/orville.json"
+            orville_path: str = WATCH_DIRECTORY + "orville.json"
             orville_info: dict = []
             try:
                 with open(orville_path, 'r') as jsonfile:
@@ -333,7 +334,7 @@ def acnhget(searchterm):
 def get_open_island_tally(server_id:str)->tuple:
     result:str = "\n ---------------------------------------- \n :airplane_small: :beach: ISLANDS OPEN RIGHT NOW :airplane_small: :beach: "
 
-    json_files: list = glob.glob("./Users/{}/*.json".format(server_id))
+    json_files: list = glob.glob(WATCH_DIRECTORY + "{}/*.json".format(server_id))
 
     # Find users who are open
     count:int = 0
@@ -365,7 +366,7 @@ def get_open_island_tally(server_id:str)->tuple:
 def get_user_data_object(message:discord.Message)->dict:
     server_id: str = str(message.guild.id)
 
-    user_data_path: str = "./Users/{}".format(server_id)
+    user_data_path: str = WATCH_DIRECTORY + "{}".format(server_id)
     if not os.path.exists(user_data_path):
         os.mkdir(user_data_path)
 
@@ -373,7 +374,7 @@ def get_user_data_object(message:discord.Message)->dict:
 
     author_username: str = str(message.author)
 
-    user_info_path: str = "./Users/{}/{}.json".format(server_id, author_id)
+    user_info_path: str = WATCH_DIRECTORY + "{}/{}.json".format(server_id, author_id)
     user_info: dict = load_user_info(user_info_path)
 
     return { "author_id": author_id, "server_id": server_id, "author_username": author_username, "user_info_path": user_info_path, "user_info": user_info }
