@@ -162,6 +162,8 @@ class OrvilleClient(discord.Client):
             message_content: str = message.content.lower()
 
             open_cmd_idx:int = message_content.find(BOTPREFIX + "open")
+            acget_cmd_idx: int = message_content.find(BOTPREFIX + "acget")
+
             if open_cmd_idx != -1:
 
                 next_space_idx:int = message_content.find(" ", open_cmd_idx) + 1
@@ -181,42 +183,42 @@ class OrvilleClient(discord.Client):
                 await self.register_ic_channel(message)
                 await message.add_reaction(ack_emoji)
 
-            elif message_content.find(BOTPREFIX + "acget") != -1:
+            elif acget_cmd_idx != -1: #acget command
                 """
                     Search https://villagerdb.com/ for an 
                     item, villager, recipe, anything.
                 """
-                acget_cmd_idx:int = message_content.find(BOTPREFIX + "acget")
-                if acget_cmd_idx != -1:
-                    next_space_idx:int = message_content.find(" ", acget_cmd_idx) + 1
-                    postfix_name:str = ""
+                await message.add_reaction(ack_emoji)
 
-                    if next_space_idx > 0 and next_space_idx + 1 < len(message_content):
-                        postfix_name = message_content[next_space_idx:]
+                next_space_idx:int = message_content.find(" ", acget_cmd_idx) + 1
+                postfix_name:str = ""
 
-                    results = acnhget(postfix_name)
-                    fullmessage = "Here's what I found: \n"
-                    if len(results) > 0:
-                        for key in results:
-                            # Item name
-                            countstring = len(key) + 10
-                            block = ""
-                            for x in range(countstring):
-                                block = block + "-"
-                            fullmessage = fullmessage + "`[[   " + key.upper() + "   ]]" + '\n' + block + '\n`'
-                            for value in results[key]:
-                                # Sub Level 1
-                                fullmessage = fullmessage + '\t' + "**" + value + "**" + '\n'
-                                if isinstance(results[key][value], list):
-                                    for i in results[key][value]:
-                                        # Sub level 2 if it's a list
-                                        fullmessage = fullmessage + '\t\t' +  i + '\n'
-                                else:
-                                    # Sub level 2 if it's just a string
-                                    fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
-                    else:
-                        fullmessage = "Couldn't find anything looking for: \n\t" + postfix_name + "\nTry again."
-                    await message.channel.send(fullmessage)
+                if next_space_idx > 0 and next_space_idx + 1 < len(message_content):
+                    postfix_name = message_content[next_space_idx:]
+
+                results = acnhget(postfix_name)
+                fullmessage = "Here's what I found: \n"
+                if len(results) > 0:
+                    for key in results:
+                        # Item name
+                        countstring = len(key) + 10
+                        block = ""
+                        for x in range(countstring):
+                            block = block + "-"
+                        fullmessage = fullmessage + "`[[   " + key.upper() + "   ]]" + '\n' + block + '\n`'
+                        for value in results[key]:
+                            # Sub Level 1
+                            fullmessage = fullmessage + '\t' + "**" + value + "**" + '\n'
+                            if isinstance(results[key][value], list):
+                                for i in results[key][value]:
+                                    # Sub level 2 if it's a list
+                                    fullmessage = fullmessage + '\t\t' +  i + '\n'
+                            else:
+                                # Sub level 2 if it's just a string
+                                fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
+                else:
+                    fullmessage = "Couldn't find anything looking for: \n\t" + postfix_name + "\nTry again."
+                await message.channel.send(fullmessage)
             
 
     #async def tally_open_islands(self, message: discord.Message, use_broadcast_channel:bool):
@@ -284,22 +286,26 @@ def acnhsearch(searchterm):
     search = searchterm.replace(" ", "+")
     url = "https://villagerdb.com/search?game=nh&q=" + search
     itemdata = {}
-    r = requests.get(url, verify=False, timeout=5)
-    soup = BeautifulSoup(r.text, 'lxml')
-    allresults = soup.find("div",{"id":"entity-browser"})["data-initial-state"]
-    jsonresults = json.loads(allresults)
-    totalcount = jsonresults['totalCount']
-    maxresults = 5
-    counter = 0
-    for i in jsonresults['results']:
-        if counter < maxresults:
-            counter = counter + 1
-            name = i['name']
-            url = "https://villagerdb.com" + i['url']
-            # thumb = "https://villagerdb.com" + i['image']['thumb']
-            itemdata[name] = {}
-            itemdata[name]['Website Link'] = url
-            # itemdata[name]['Image'] = thumb            
+    r:requests.Response = requests.get(url, verify=False, timeout=5)
+
+    if r.ok:
+        soup = BeautifulSoup(r.text, 'lxml')
+        allresults = soup.find("div",{"id":"entity-browser"})["data-initial-state"]
+        jsonresults = json.loads(allresults)
+        totalcount = jsonresults['totalCount']
+        maxresults = 5
+        counter = 0
+        for i in jsonresults['results']:
+            if counter < maxresults:
+                counter = counter + 1
+                name = i['name']
+                url = "https://villagerdb.com" + i['url']
+                # thumb = "https://villagerdb.com" + i['image']['thumb']
+                itemdata[name] = {}
+                itemdata[name]['Website Link'] = url
+                # itemdata[name]['Image'] = thumb
+    else:
+        print("acnhsearch request to url {} w/ no response or timeout".format(url))
     return itemdata
    
 def acnhget(searchterm):
@@ -307,8 +313,10 @@ def acnhget(searchterm):
     url = "https://villagerdb.com/item/" + search
     r = requests.get(url, verify=False, timeout=5)
     if r.status_code == 404:
+        print("Got 404 from search {}".format(search))
         itemdata = acnhsearch(searchterm)
-    else: 
+    elif r.ok:
+        print("Got qualified result from search {}".format(search))
         itemdata = {}
         soup = BeautifulSoup(r.text, 'lxml')
         namespace = soup.select("h1")[0].text.strip()
@@ -329,6 +337,9 @@ def acnhget(searchterm):
             else:
                 value = line[1].text
                 itemdata[namespace][col1].append(value)
+    else:
+        print("Got error code {} from request {}".format(str(r.status_code), url))
+
     return itemdata
 
 def get_open_island_tally(server_id:str)->tuple:
