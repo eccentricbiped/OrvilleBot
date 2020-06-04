@@ -284,7 +284,7 @@ def acnhsearch(searchterm):
     search = searchterm.replace(" ", "+")
     url = "https://villagerdb.com/search?game=nh&q=" + search
     itemdata = {}
-    r = requests.get(url, verify=False)
+    r = requests.get(url, verify=False, timeout=5)
     soup = BeautifulSoup(r.text, 'lxml')
     allresults = soup.find("div",{"id":"entity-browser"})["data-initial-state"]
     jsonresults = json.loads(allresults)
@@ -305,7 +305,7 @@ def acnhsearch(searchterm):
 def acnhget(searchterm):
     search = searchterm.replace(" ", "-")
     url = "https://villagerdb.com/item/" + search
-    r = requests.get(url, verify=False)
+    r = requests.get(url, verify=False, timeout=5)
     if r.status_code == 404:
         itemdata = acnhsearch(searchterm)
     else: 
