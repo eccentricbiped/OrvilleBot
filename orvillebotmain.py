@@ -185,31 +185,37 @@ class OrvilleClient(discord.Client):
                     Search https://villagerdb.com/ for an 
                     item, villager, recipe, anything.
                 """
-                splittingmsg = message_content.split(" ", 1)
-                splitmsg = splittingmsg[1]
-                results = acnhget(splitmsg)
-                fullmessage = "Here's what I found: \n"
-                if len(results) > 0:
-                    for key in results:
-                        # Item name
-                        countstring = len(key) + 10
-                        block = ""
-                        for x in range(countstring):
-                            block = block + "-"
-                        fullmessage = fullmessage + "`[[   " + key.upper() + "   ]]" + '\n' + block + '\n`'
-                        for value in results[key]:
-                            # Sub Level 1
-                            fullmessage = fullmessage + '\t' + "**" + value + "**" + '\n'
-                            if isinstance(results[key][value], list):
-                                for i in results[key][value]:
-                                    # Sub level 2 if it's a list
-                                    fullmessage = fullmessage + '\t\t' +  i + '\n'
-                            else:
-                                # Sub level 2 if it's just a string
-                                fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
-                else:
-                    fullmessage = "Couldn't find anything looking for: \n\t" + splitmsg + "\nTry again."
-                await message.channel.send(fullmessage)
+                acget_cmd_idx:int = message_content.find(BOTPREFIX + "acget")
+                if acget_cmd_idx != -1:
+                    next_space_idx:int = message_content.find(" ", acget_cmd_idx) + 1
+                    postfix_name:str = ""
+
+                    if next_space_idx > 0 and next_space_idx + 1 < len(message_content):
+                        postfix_name = message_content[next_space_idx:]
+
+                    results = acnhget(postfix_name)
+                    fullmessage = "Here's what I found: \n"
+                    if len(results) > 0:
+                        for key in results:
+                            # Item name
+                            countstring = len(key) + 10
+                            block = ""
+                            for x in range(countstring):
+                                block = block + "-"
+                            fullmessage = fullmessage + "`[[   " + key.upper() + "   ]]" + '\n' + block + '\n`'
+                            for value in results[key]:
+                                # Sub Level 1
+                                fullmessage = fullmessage + '\t' + "**" + value + "**" + '\n'
+                                if isinstance(results[key][value], list):
+                                    for i in results[key][value]:
+                                        # Sub level 2 if it's a list
+                                        fullmessage = fullmessage + '\t\t' +  i + '\n'
+                                else:
+                                    # Sub level 2 if it's just a string
+                                    fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
+                    else:
+                        fullmessage = "Couldn't find anything looking for: \n\t" + postfix_name + "\nTry again."
+                    await message.channel.send(fullmessage)
             
 
     #async def tally_open_islands(self, message: discord.Message, use_broadcast_channel:bool):
