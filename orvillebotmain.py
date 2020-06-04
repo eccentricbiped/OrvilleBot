@@ -208,7 +208,7 @@ class OrvilleClient(discord.Client):
                                 # Sub level 2 if it's just a string
                                 fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
                 else:
-                    fullmessage = "Couldn't find anything looking for: \n\t" + message + "\nTry again."
+                    fullmessage = "Couldn't find anything looking for: \n\t" + splitmsg + "\nTry again."
                 await message.channel.send(fullmessage)
             
 

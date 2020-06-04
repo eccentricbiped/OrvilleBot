@@ -1,6 +1,9 @@
 {
-    "692603331427827722": {
-        "broadcast_channel_id": 692979843012231209,
-        "open_count": 0
-    }
+    "servers": [
+        {
+            "broadcast_channel_id": 507272881072373770,
+            "open_count": 0,
+            "server_id": 499975542649651210
+        }
+    ]
 }
