@@ -8,6 +8,10 @@ import glob
 import json
 import pytz
 import asyncio
+import urllib3
+import requests
+from bs4 import BeautifulSoup
+urllib3.disable_warnings()
 
 # import time module, Observer, FileSystemEventHandler
 import time
@@ -26,7 +30,8 @@ ZFILL_LEN = 4
 default_timezone:str = "America/New_York"
 current_date_no: int = -1
 
-WATCH_DIRECTORY = "./Users/"
+# WATCH_DIRECTORY = "./Users/"
+WATCH_DIRECTORY = os.getenv('WATCH_DIRECTORY')
 NOTIFY_OFF = -1
 
 client = None
@@ -102,7 +107,7 @@ class OrvilleClient(discord.Client):
         if ".json~" not in src_path and "orville" not in src_path:
 
             #server_id_str: str = src_path[-42:-24]  # Hacky way to get the server id
-            orville_path: str = "./Users/orville.json"
+            orville_path: str = WATCH_DIRECTORY + "orville.json"
             orville_info: dict = []
             try:
                 with open(orville_path, 'r') as jsonfile:
@@ -157,6 +162,8 @@ class OrvilleClient(discord.Client):
             message_content: str = message.content.lower()
 
             open_cmd_idx:int = message_content.find(BOTPREFIX + "open")
+            acget_cmd_idx: int = message_content.find(BOTPREFIX + "acget")
+
             if open_cmd_idx != -1:
 
                 next_space_idx:int = message_content.find(" ", open_cmd_idx) + 1
@@ -176,9 +183,43 @@ class OrvilleClient(discord.Client):
                 await self.register_ic_channel(message)
                 await message.add_reaction(ack_emoji)
 
-            #elif message_content.find(BOTPREFIX + "visit") != -1:
-            #    await self.tally_open_islands(message, use_broadcast_channel=False)
+            elif acget_cmd_idx != -1: #acget command
+                """
+                    Search https://villagerdb.com/ for an 
+                    item, villager, recipe, anything.
+                """
+                await message.add_reaction(ack_emoji)
 
+                next_space_idx:int = message_content.find(" ", acget_cmd_idx) + 1
+                postfix_name:str = ""
+
+                if next_space_idx > 0 and next_space_idx + 1 < len(message_content):
+                    postfix_name = message_content[next_space_idx:]
+
+                results = acnhget(postfix_name)
+                fullmessage = "Here's what I found: \n"
+                if len(results) > 0:
+                    for key in results:
+                        # Item name
+                        countstring = len(key) + 10
+                        block = ""
+                        for x in range(countstring):
+                            block = block + "-"
+                        fullmessage = fullmessage + "`[[   " + key.upper() + "   ]]" + '\n' + block + '\n`'
+                        for value in results[key]:
+                            # Sub Level 1
+                            fullmessage = fullmessage + '\t' + "**" + value + "**" + '\n'
+                            if isinstance(results[key][value], list):
+                                for i in results[key][value]:
+                                    # Sub level 2 if it's a list
+                                    fullmessage = fullmessage + '\t\t' +  i + '\n'
+                            else:
+                                # Sub level 2 if it's just a string
+                                fullmessage = fullmessage + '\t\t' + results[key][value] + '\n'
+                else:
+                    fullmessage = "Couldn't find anything looking for: \n\t" + postfix_name + "\nTry again."
+                await message.channel.send(fullmessage)
+            
 
     #async def tally_open_islands(self, message: discord.Message, use_broadcast_channel:bool):
 
@@ -241,10 +282,70 @@ class OrvilleClient(discord.Client):
 
 ####################### FUNCTIONS #######################
 
+def acnhsearch(searchterm):
+    search = searchterm.replace(" ", "+")
+    url = "https://villagerdb.com/search?game=nh&q=" + search
+    itemdata = {}
+    r:requests.Response = requests.get(url, verify=False, timeout=5)
+
+    if r.ok:
+        soup = BeautifulSoup(r.text, 'lxml')
+        allresults = soup.find("div",{"id":"entity-browser"})["data-initial-state"]
+        jsonresults = json.loads(allresults)
+        totalcount = jsonresults['totalCount']
+        maxresults = 5
+        counter = 0
+        for i in jsonresults['results']:
+            if counter < maxresults:
+                counter = counter + 1
+                name = i['name']
+                url = "https://villagerdb.com" + i['url']
+                # thumb = "https://villagerdb.com" + i['image']['thumb']
+                itemdata[name] = {}
+                itemdata[name]['Website Link'] = url
+                # itemdata[name]['Image'] = thumb
+    else:
+        print("acnhsearch request to url {} w/ no response or timeout".format(url))
+    return itemdata
+   
+def acnhget(searchterm):
+    search = searchterm.replace(" ", "-")
+    url = "https://villagerdb.com/item/" + search
+    r = requests.get(url, verify=False, timeout=5)
+    if r.status_code == 404:
+        print("Got 404 from search {}".format(search))
+        itemdata = acnhsearch(searchterm)
+    elif r.ok:
+        print("Got qualified result from search {}".format(search))
+        itemdata = {}
+        soup = BeautifulSoup(r.text, 'lxml')
+        namespace = soup.select("h1")[0].text.strip()
+        itemdata[namespace] = {}
+        tab = soup.find("table",{"class":"table item-game-data"}).select("tbody tr")
+        # imagebloc = soup.find("div",{"class":"entity-dropdown-init d-inline-block"})["data-image"]
+        # jsonresults = json.loads(imagebloc)
+        itemdata[namespace]['Website Link'] = url
+        # itemdata[namespace]['Image'] = "https://villagerdb.com" + jsonresults['thumb']
+        for row in tab:
+            line = row.select("td")
+            col1 = line[0].text.strip()
+            itemdata[namespace][col1] = []
+            if line[1].select("li, div"):
+                for data in line[1].select("li, div"):
+                    value = data.text.strip().replace("  ", "").replace("\n","")
+                    itemdata[namespace][col1].append(value)
+            else:
+                value = line[1].text
+                itemdata[namespace][col1].append(value)
+    else:
+        print("Got error code {} from request {}".format(str(r.status_code), url))
+
+    return itemdata
+
 def get_open_island_tally(server_id:str)->tuple:
     result:str = "\n ---------------------------------------- \n :airplane_small: :beach: ISLANDS OPEN RIGHT NOW :airplane_small: :beach: "
 
-    json_files: list = glob.glob("./Users/{}/*.json".format(server_id))
+    json_files: list = glob.glob(WATCH_DIRECTORY + "{}/*.json".format(server_id))
 
     # Find users who are open
     count:int = 0
@@ -276,7 +377,7 @@ def get_open_island_tally(server_id:str)->tuple:
 def get_user_data_object(message:discord.Message)->dict:
     server_id: str = str(message.guild.id)
 
-    user_data_path: str = "./Users/{}".format(server_id)
+    user_data_path: str = WATCH_DIRECTORY + "{}".format(server_id)
     if not os.path.exists(user_data_path):
         os.mkdir(user_data_path)
 
@@ -284,7 +385,7 @@ def get_user_data_object(message:discord.Message)->dict:
 
     author_username: str = str(message.author)
 
-    user_info_path: str = "./Users/{}/{}.json".format(server_id, author_id)
+    user_info_path: str = WATCH_DIRECTORY + "{}/{}.json".format(server_id, author_id)
     user_info: dict = load_user_info(user_info_path)
 
     return { "author_id": author_id, "server_id": server_id, "author_username": author_username, "user_info_path": user_info_path, "user_info": user_info }
